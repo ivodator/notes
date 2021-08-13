@@ -1,15 +1,13 @@
 const express = require('express');
-const { ApolloServer , gql } = require('apollo-server-express');
+const { ApolloServer, gql } = require('apollo-server-express');
+require('dotenv').config();
+
+const db = require('./db');
+const models = require('./models');
 
 // Run the server on a port specified in our .env file or port 4000
 const port = process.env.PORT || 4000;
-
-// Basic data for API to work at the start
-let notes = [
-    { id: '1', content: 'This is a note', author: 'Adam Scott'},
-    { id: '2', content: 'This is another note', author: 'Harlow Everly'},
-    { id: '3', content: 'Oh wow, this is also a note', author: 'Riley Harrison'}
-];
+const DB_HOST = process.env.DB_HOST;
 
 // Construct a schema, using GraphQL schema language
 const typeDefs = gql`
@@ -34,25 +32,27 @@ const typeDefs = gql`
 const resolvers = {
     Query: {
         hello: () => 'Hello world!',
-        notes: () => notes,
-        note: (parent, args) => {
-            return notes.find(note => note.id === args.id);
+        notes: async () => {
+            return await models.Note.find();
+            },
+        note: async (parent, args) => {
+            return await models.Note.findById(args.id);
         }
     },
     Mutation: {
-        newNote: (parent, args) => {
-            let noteValue = {
-                id: String(notes.length + 1),
+        newNote: async (parent, args) => {
+            return await models.Note.create({
                 content: args.content,
                 author: 'Adam Scott'
-            };
-            notes.push(noteValue);
-            return noteValue;
+            });
         }
-    }
-};
+      }
+    };
 
 const app = express();
+
+// Connect to the Database
+db.connect(DB_HOST);
 
 // Apollo server setup
 const server = new ApolloServer({ typeDefs, resolvers });
@@ -64,4 +64,4 @@ app.listen({ port }, () =>
     console.log(
         `GraphQL Server running at http://localhost:${port}${server.graphqlPath}`
     )
-);
+)
